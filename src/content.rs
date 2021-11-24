@@ -20,7 +20,7 @@ impl Content {
                 match acc {
                     None => Some(x),
                     Some(v) => {
-                        if v.height < x.height {
+                        if v.height() < x.height() {
                             Some(x)
                         } else {
                             Some(v)

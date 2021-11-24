@@ -12,7 +12,6 @@ base64 = "0.13"
 easy-scraper = "0.2"
 http = "*"
 log = "0.4"
-readonly = "0.2"
 regex = "1.5"
 reqwest = { version = "0.11", features = ["json"] }
 serde = { version = "1.0", features = ["derive"] }

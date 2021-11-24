@@ -7,13 +7,18 @@ use crate::VimeoError;
 use crate::segment::Segment;
 use crate::get::Get;
 
-#[readonly::make]
 #[derive(Debug, Deserialize)]
 pub struct Video {
-    pub height: f64,
+    height: f64,
     base_url: String,
     init_segment: String,
     segments: Vec<Segment>,
+}
+
+impl Video {
+    pub fn height(&self) -> f64 {
+        self.height
+    }
 }
 
 #[async_trait]
