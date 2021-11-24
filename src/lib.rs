@@ -1,8 +1,13 @@
-#[cfg(test)]
-mod tests {
-    #[test]
-    fn it_works() {
-        let result = 2 + 2;
-        assert_eq!(result, 4);
-    }
-}
+
+mod error;
+mod audio;
+mod video;
+mod content;
+mod segment;
+mod get;
+
+pub use error::VimeoError;
+pub use get::get_movie;
+
+
+
