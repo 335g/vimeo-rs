@@ -5,12 +5,14 @@ edition = "2021"
 
 [features]
 default = []
+progressbar = ["indicatif"]
 
 [dependencies]
 async-trait = "0.1"
 base64 = "0.13"
 easy-scraper = "0.2"
 http = "*"
+indicatif = { version = "0.17.0-beta.1", optional = true }
 log = "0.4"
 regex = "1.5"
 reqwest = { version = "0.11", features = ["json"] }
@@ -28,3 +30,4 @@ env_logger = "0.9"
 
 [[example]]
 name = "ex1"
+features = ["progressbar"]

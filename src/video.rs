@@ -19,6 +19,10 @@ impl Video {
     pub fn height(&self) -> f64 {
         self.height
     }
+
+    pub fn base_url(&self) -> &str {
+        &self.base_url
+    }
 }
 
 #[async_trait]

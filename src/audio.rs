@@ -14,6 +14,12 @@ pub struct Audio {
     segments: Vec<Segment>
 }
 
+impl Audio {
+    pub fn base_url(&self) -> &str {
+        &self.base_url
+    }
+}
+
 #[async_trait]
 impl Get for Audio {
     fn init_segment(&self) -> &str {
