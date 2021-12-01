@@ -1,7 +1,13 @@
 [package]
 name = "vimeo-rs"
-version = "0.0.1"
+description = "vimeo contents for Rust"
+version = "0.1.0"
+keywords = ["cli", "vimeo"]
 edition = "2021"
+authors = ["Yoshiki Kudo <actionstar619@yahoo.co.jp>"]
+license = "MIT"
+repository = "https://github.com/335g/vimeo-rs"
+readme = "README.md"
 
 [features]
 default = []
