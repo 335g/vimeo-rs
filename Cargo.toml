@@ -21,7 +21,7 @@ progressbar = ["indicatif"]
 async-trait = "0.1"
 base64 = "0.13"
 easy-scraper = "0.2"
-http = "*"
+http = "0.2"
 indicatif = { version = "0.17.0-beta.1", optional = true }
 log = "0.4"
 regex = "1.5"
@@ -31,7 +31,7 @@ serde_json = "1.0"
 tokio = { version = "1.14", features = ["io-std", "io-util", "fs", "rt"]}
 tempfile = "3.2"
 thiserror = "1.0"
-url = "*"
+url = "2.2"
 which = "4.2"
 
 [dev-dependencies]
