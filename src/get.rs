@@ -143,7 +143,7 @@ where
 
 #[cfg(feature="progressbar")]
 #[allow(dead_code)]
-pub async fn get_movie<U1, U2, P, V>(at: U1, from: U2, save_file_path: P, user_agent: V, style: Option<ProgressStyle>) -> Result<(), VimeoError>
+pub async fn get_movie<U1, U2, P, V>(at: U1, from: U2, save_file_path: P, user_agent: V, pb: ProgressBar) -> Result<(), VimeoError>
 where
     U1: IntoUrl,
     U1: IntoUrl,
@@ -182,18 +182,9 @@ where
     // audio + video + merge
     let audio_size = audio.segments().len() as u64;
     let video_size = video.segments().len() as u64;
-    // let total_size = audio_size + video_size + 1;
-    let total_size = audio_size + video_size;
-
-    let pb = ProgressBar::new(total_size);
-    let style = if let Some(style) = style {
-        style
-    } else {
-        ProgressStyle::default_bar()
-            .template("{spinner:.green} [{elapsed_precise}] [{bar:40.cyan/blue}] ({pos}/{len}) {msg}")
-            .progress_chars("#>-")
-    };
-    pb.set_style(style);
+    let total_size = audio_size + video_size + 1;
+    
+    pb.set_length(total_size);
 
     let (tx, rx) = mpsc::channel();
 

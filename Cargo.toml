@@ -1,7 +1,7 @@
 [package]
 name = "vimeo-rs"
 description = "vimeo contents for Rust"
-version = "0.1.0"
+version = "0.1.1"
 categories = ["multimedia"]
 keywords = ["vimeo"]
 edition = "2021"
@@ -37,3 +37,4 @@ which = "4.2"
 [dev-dependencies]
 tokio = { version = "1.14", features = ["macros", "rt-multi-thread"] }
 env_logger = "0.9"
+indicatif = "*"
