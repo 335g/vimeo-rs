@@ -1,7 +1,7 @@
 [package]
 name = "vimeo-rs"
 description = "vimeo contents for Rust"
-version = "0.1.2"
+version = "0.1.3"
 rust-version = "1.56"
 categories = ["multimedia"]
 keywords = ["vimeo"]
@@ -29,7 +29,7 @@ regex = "1.5"
 reqwest = { version = "0.11", features = ["json"] }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
-tokio = { version = "1.14", features = ["io-std", "io-util", "fs", "rt"]}
+tokio = { version = "1.14", features = ["io-std", "io-util", "fs", "rt", "sync"]}
 tempfile = "3.2"
 thiserror = "1.0"
 url = "2.2"

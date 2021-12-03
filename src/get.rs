@@ -1,8 +1,8 @@
 
-use std::{path::Path, sync::mpsc::Sender};
+use std::{path::Path};
 
 #[cfg(feature = "progressbar")]
-use std::sync::mpsc;
+use tokio::sync::mpsc::{self, Sender};
 
 use easy_scraper::Pattern;
 use regex::Regex;
@@ -26,7 +26,8 @@ pub trait Get: Sized {
         V: TryInto<HeaderValue> + Clone + Send,
         V::Error: Into<http::Error>,
     {
-        for seg in self.segments() {
+        let segments = self.segments();
+        for seg in segments {
             let url = base_url.join(seg.url())?;
             let client = reqwest::Client::builder()
                 .user_agent(user_agent.clone())
@@ -47,6 +48,7 @@ pub trait Get: Sized {
         Ok(())
     }
 
+    #[cfg(feature = "progressbar")]
     async fn write_segments_with_counter<W, V>(self, base_url: Url, mut writer: W, user_agent: V, sender: Sender<()>) -> Result<(), VimeoError>
     where
         W: AsyncWrite + Unpin + Send,
@@ -72,7 +74,7 @@ pub trait Get: Sized {
             writer.write_all(bytes.as_ref()).await?;
 
             // countup
-            sender.send(()).unwrap();
+            sender.send(()).await.unwrap();
         }
 
         Ok(())
@@ -172,13 +174,13 @@ where
     mp4_writer.write_all(&init_segment).await?;
 
     // audio + video + merge
-    let audio_size = audio.segments().len() as u64;
-    let video_size = video.segments().len() as u64;
-    let total_size = audio_size + video_size + 1;
+    let audio_size = audio.segments().len();
+    let video_size = video.segments().len();
+    let total_size = audio_size + video_size;
     
-    pb.set_length(total_size);
+    pb.set_length(total_size as u64);
 
-    let (tx, rx) = mpsc::channel();
+    let (tx, mut rx) = mpsc::channel(total_size);
 
     let mp3_sender = tx.clone();
     let mp3_user_agent = user_agent.clone();
@@ -195,7 +197,7 @@ where
     pb.set_message("downloading");
 
     for _ in 0..total_size {
-        rx.recv().unwrap();
+        rx.recv().await.unwrap();
         pb.inc(1);
     }
 
