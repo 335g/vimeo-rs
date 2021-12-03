@@ -1,9 +1,5 @@
-use http::HeaderValue;
-use reqwest::Url;
 use serde::Deserialize;
 use async_trait::async_trait;
-use tokio::io::AsyncWriteExt;
-use crate::VimeoError;
 use crate::segment::Segment;
 use crate::get::Get;
 
@@ -20,6 +16,7 @@ impl Video {
         self.height
     }
 
+    #[allow(dead_code)]
     pub fn base_url(&self) -> &str {
         &self.base_url
     }
@@ -33,17 +30,5 @@ impl Get for Video {
 
     fn segments(&self) -> &[Segment] {
         &self.segments
-    }
-
-    async fn get<W, V>(&self, url: Url, writer: W, user_agent: V) -> Result<(), VimeoError>
-    where
-        W: AsyncWriteExt + Unpin + Send,
-        V: TryInto<HeaderValue> + Clone + Send,
-        V::Error: Into<http::Error>
-    {
-        let base_url = url.join(&format!("video/{}", self.base_url))?;
-        self.write_segments(base_url, writer, user_agent).await?;
-
-        Ok(())
     }
 }

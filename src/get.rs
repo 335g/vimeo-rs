@@ -11,7 +11,7 @@ use async_trait::async_trait;
 use tokio::io::{AsyncWrite, AsyncWriteExt};
 
 #[cfg(feature = "progressbar")]
-use indicatif::{ProgressBar, ProgressStyle};
+use indicatif::ProgressBar;
 
 use crate::{audio::Audio, content::Content, error::VimeoError, segment::Segment, video::Video};
 
@@ -19,11 +19,6 @@ use crate::{audio::Audio, content::Content, error::VimeoError, segment::Segment,
 pub trait Get: Sized {
     fn init_segment(&self) -> &str;
     fn segments(&self) -> &[Segment];
-    async fn get<W, V>(&self, url: Url, writer: W, user_agent: V) -> Result<(), VimeoError>
-    where
-        W: AsyncWriteExt + Unpin + Send,
-        V: TryInto<HeaderValue> + Clone + Send,
-        V::Error: Into<http::Error>;
 
     async fn write_segments<W, V>(&self, base_url: Url, mut writer: W, user_agent: V) -> Result<(), VimeoError>
     where
@@ -31,9 +26,6 @@ pub trait Get: Sized {
         V: TryInto<HeaderValue> + Clone + Send,
         V::Error: Into<http::Error>,
     {
-        let init_segment = base64::decode(self.init_segment())?;
-        writer.write_all(&init_segment).await?;
-        
         for seg in self.segments() {
             let url = base_url.join(seg.url())?;
             let client = reqwest::Client::builder()
@@ -191,13 +183,13 @@ where
     let mp3_sender = tx.clone();
     let mp3_user_agent = user_agent.clone();
     let mp3_handle = tokio::spawn(async {
-        audio.write_segments_with_counter(mp3_base_url, mp3_writer, mp3_user_agent, mp3_sender).await;
+        audio.write_segments_with_counter(mp3_base_url, mp3_writer, mp3_user_agent, mp3_sender).await
     });
 
     let mp4_sender = tx.clone();
     let mp4_user_agent = user_agent.clone();
     let mp4_handle = tokio::spawn(async {
-        video.write_segments_with_counter(mp4_base_url, mp4_writer, mp4_user_agent, mp4_sender).await;
+        video.write_segments_with_counter(mp4_base_url, mp4_writer, mp4_user_agent, mp4_sender).await
     });
 
     pb.set_message("downloading");
@@ -207,8 +199,8 @@ where
         pb.inc(1);
     }
 
-    mp3_handle.await;
-    mp4_handle.await;
+    mp3_handle.await??;
+    mp4_handle.await??;
 
     log::trace!("ffmpeg -i 'mp3_tmp_filepath' -i 'mp4_tmp_filepath' -acodec copy -vcodec copy 'save_file_path'");
     let _ = std::process::Command::new("ffmpeg")
@@ -257,21 +249,28 @@ where
     log::debug!("tmp_dir: {:?}", &tmp_dir);
 
     let mp3_tmp_filepath = tmp_dir.path().join("tmp.mp3");
-    let f = tokio::fs::File::create(&mp3_tmp_filepath).await?;
-    let writer = tokio::io::BufWriter::new(f);
-    let ua = user_agent.clone();
-    let url = base_url.clone();
-    let mp3_handle = tokio::spawn(async move{
-        audio.get(url, writer, ua).await
-    });
+    let mp3_f = tokio::fs::File::create(&mp3_tmp_filepath).await?;
+    let mut mp3_writer = tokio::io::BufWriter::new(mp3_f);
+    let (_, mp3_base_url) = audio.base_url().split_at(3);
+    let mp3_base_url = base_url.clone().join(mp3_base_url)?;
+    let init_segment = base64::decode(audio.init_segment())?;
+    mp3_writer.write_all(&init_segment).await?;
 
     let mp4_tmp_filepath = tmp_dir.path().join("tmp.mp4");
-    let f = tokio::fs::File::create(&mp4_tmp_filepath).await?;
-    let writer = tokio::io::BufWriter::new(f);
-    let ua = user_agent.clone();
-    let url = base_url.clone();
-    let mp4_handle = tokio::spawn(async move{
-        video.get(url, writer, ua).await
+    let mp4_f = tokio::fs::File::create(&mp4_tmp_filepath).await?;
+    let mut mp4_writer = tokio::io::BufWriter::new(mp4_f);
+    let mp4_base_url = base_url.clone().join(&format!("video/{}", video.base_url()))?;
+    let init_segment = base64::decode(video.init_segment())?;
+    mp4_writer.write_all(&init_segment).await?;
+
+    let mp3_user_agent = user_agent.clone();
+    let mp3_handle = tokio::spawn(async move {
+        audio.write_segments(mp3_base_url, mp3_writer, mp3_user_agent).await
+    });
+
+    let mp4_user_agent = user_agent.clone();
+    let mp4_handle = tokio::spawn(async move {
+        video.write_segments(mp4_base_url, mp4_writer, mp4_user_agent).await
     });
 
     mp3_handle.await??;
