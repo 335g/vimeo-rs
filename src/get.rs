@@ -137,7 +137,7 @@ where
 
 #[cfg(feature="progressbar")]
 #[allow(dead_code)]
-pub async fn get_movie<U1, U2, P, V>(at: U1, from: U2, save_file_path: P, user_agent: V, pb: ProgressBar) -> Result<(), VimeoError>
+pub async fn get_movie<U1, U2, P, V>(at: U1, from: U2, save_file_path: P, user_agent: V, pb: ProgressBar, downloading_msg: Option<String>, finished_msg: Option<String>) -> Result<(), VimeoError>
 where
     U1: IntoUrl,
     U1: IntoUrl,
@@ -176,7 +176,7 @@ where
     // audio + video + merge
     let audio_size = audio.segments().len();
     let video_size = video.segments().len();
-    let total_size = audio_size + video_size;
+    let total_size = audio_size + video_size + 1;
     
     pb.set_length(total_size as u64);
 
@@ -194,9 +194,10 @@ where
         video.write_segments_with_counter(mp4_base_url, mp4_writer, mp4_user_agent, mp4_sender).await
     });
 
-    pb.set_message("downloading");
+    let downloading_msg = downloading_msg.unwrap_or("downloading".to_string());
+    pb.set_message(downloading_msg);
 
-    for _ in 0..total_size {
+    for _ in 0..(total_size - 1) {
         rx.recv().await.unwrap();
         pb.inc(1);
     }
@@ -222,7 +223,8 @@ where
     tmp_dir.close()?;
     
     pb.inc(1);
-    pb.finish_with_message("finished");
+    let finished_msg = finished_msg.unwrap_or("finished".to_string());
+    pb.finish_with_message(finished_msg);
 
     Ok(())
 }
