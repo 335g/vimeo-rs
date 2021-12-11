@@ -8,10 +8,12 @@ use easy_scraper::Pattern;
 use regex::Regex;
 use reqwest::{IntoUrl, Url, header::HeaderValue};
 use async_trait::async_trait;
-use tokio::io::{AsyncWrite, AsyncWriteExt};
+use tokio::io::{AsyncWrite, AsyncWriteExt, BufWriter};
+use tokio::fs::File;
 
 #[cfg(feature = "progressbar")]
 use indicatif::ProgressBar;
+use tokio::task::JoinHandle;
 
 use crate::{audio::Audio, content::Content, error::VimeoError, segment::Segment, video::Video};
 
@@ -19,6 +21,17 @@ use crate::{audio::Audio, content::Content, error::VimeoError, segment::Segment,
 pub trait Get: Sized {
     fn init_segment(&self) -> &str;
     fn segments(&self) -> &[Segment];
+    fn url(&self, base_url: &Url) -> Result<Url, VimeoError>;
+
+    async fn writer<P: AsRef<Path> + Send>(&self, file_path: P) -> Result<BufWriter<File>, VimeoError> {
+        let f = File::create(file_path).await?;
+        let mut writer = BufWriter::new(f);
+
+        let init_segment = base64::decode(self.init_segment())?;
+        writer.write_all(&init_segment).await?;
+
+        Ok(writer)
+    }
 
     async fn write_segments<W, V>(&self, base_url: Url, mut writer: W, user_agent: V) -> Result<(), VimeoError>
     where
@@ -137,7 +150,7 @@ where
 
 #[cfg(feature="progressbar")]
 #[allow(dead_code)]
-pub async fn get_movie<U1, U2, P, V>(at: U1, from: U2, save_file_path: P, user_agent: V, pb: ProgressBar, downloading_msg: Option<String>, finished_msg: Option<String>) -> Result<(), VimeoError>
+pub async fn get_movie_with<U1, U2, P, V>(at: U1, from: U2, save_file_path: P, user_agent: V, pb: ProgressBar, downloading_msg: Option<String>, finished_msg: Option<String>) -> Result<(), VimeoError>
 where
     U1: IntoUrl,
     U1: IntoUrl,
@@ -158,21 +171,6 @@ where
     let tmp_dir = tempfile::tempdir()?;
     log::debug!("tmp_dir: {:?}", &tmp_dir);
 
-    let mp3_tmp_filepath = tmp_dir.path().join("tmp.mp3");
-    let mp3_f = tokio::fs::File::create(&mp3_tmp_filepath).await?;
-    let mut mp3_writer = tokio::io::BufWriter::new(mp3_f);
-    let (_, mp3_base_url) = audio.base_url().split_at(3);
-    let mp3_base_url = base_url.clone().join(mp3_base_url)?;
-    let init_segment = base64::decode(audio.init_segment())?;
-    mp3_writer.write_all(&init_segment).await?;
-
-    let mp4_tmp_filepath = tmp_dir.path().join("tmp.mp4");
-    let mp4_f = tokio::fs::File::create(&mp4_tmp_filepath).await?;
-    let mut mp4_writer = tokio::io::BufWriter::new(mp4_f);
-    let mp4_base_url = base_url.clone().join(&format!("video/{}", video.base_url()))?;
-    let init_segment = base64::decode(video.init_segment())?;
-    mp4_writer.write_all(&init_segment).await?;
-
     // audio + video + merge
     let audio_size = audio.segments().len();
     let video_size = video.segments().len();
@@ -184,14 +182,28 @@ where
 
     let mp3_sender = tx.clone();
     let mp3_user_agent = user_agent.clone();
-    let mp3_handle = tokio::spawn(async {
-        audio.write_segments_with_counter(mp3_base_url, mp3_writer, mp3_user_agent, mp3_sender).await
+    let mp3_tmp_filepath = tmp_dir.path().join("tmp.mp3");
+    let filepath = mp3_tmp_filepath.clone();
+    let url = base_url.clone();
+    let mp3_handle = tokio::spawn(async move {
+        let mp3_base_url = audio.url(&url)?;
+        let mp3_writer = audio.writer(filepath).await?;
+        audio.write_segments_with_counter(mp3_base_url, mp3_writer, mp3_user_agent, mp3_sender).await?;
+
+        Result::<_, VimeoError>::Ok(())
     });
 
     let mp4_sender = tx.clone();
     let mp4_user_agent = user_agent.clone();
-    let mp4_handle = tokio::spawn(async {
-        video.write_segments_with_counter(mp4_base_url, mp4_writer, mp4_user_agent, mp4_sender).await
+    let mp4_tmp_filepath = tmp_dir.path().join("tmp.mp4");
+    let filepath = mp4_tmp_filepath.clone();
+    let url = base_url.clone();
+    let mp4_handle = tokio::spawn(async move {
+        let mp4_base_url = video.url(&url)?;
+        let mp4_writer = video.writer(filepath).await?;
+        video.write_segments_with_counter(mp4_base_url, mp4_writer, mp4_user_agent, mp4_sender).await?;
+
+        Result::<_, VimeoError>::Ok(())
     });
 
     let downloading_msg = downloading_msg.unwrap_or("downloading".to_string());
@@ -229,7 +241,6 @@ where
     Ok(())
 }
 
-#[cfg(not(feature="progressbar"))]
 #[allow(dead_code)]
 pub async fn get_movie<U1, U2, P, V>(at: U1, from: U2, save_file_path: P, user_agent: V) -> Result<(), VimeoError>
 where
@@ -252,29 +263,28 @@ where
     let tmp_dir = tempfile::tempdir()?;
     log::debug!("tmp_dir: {:?}", &tmp_dir);
 
-    let mp3_tmp_filepath = tmp_dir.path().join("tmp.mp3");
-    let mp3_f = tokio::fs::File::create(&mp3_tmp_filepath).await?;
-    let mut mp3_writer = tokio::io::BufWriter::new(mp3_f);
-    let (_, mp3_base_url) = audio.base_url().split_at(3);
-    let mp3_base_url = base_url.clone().join(mp3_base_url)?;
-    let init_segment = base64::decode(audio.init_segment())?;
-    mp3_writer.write_all(&init_segment).await?;
-
-    let mp4_tmp_filepath = tmp_dir.path().join("tmp.mp4");
-    let mp4_f = tokio::fs::File::create(&mp4_tmp_filepath).await?;
-    let mut mp4_writer = tokio::io::BufWriter::new(mp4_f);
-    let mp4_base_url = base_url.clone().join(&format!("video/{}", video.base_url()))?;
-    let init_segment = base64::decode(video.init_segment())?;
-    mp4_writer.write_all(&init_segment).await?;
-
     let mp3_user_agent = user_agent.clone();
+    let mp3_tmp_filepath = tmp_dir.path().join("tmp.mp3");
+    let filepath = mp3_tmp_filepath.clone();
+    let url = base_url.clone();
     let mp3_handle = tokio::spawn(async move {
-        audio.write_segments(mp3_base_url, mp3_writer, mp3_user_agent).await
+        let mp3_base_url = audio.url(&url)?;
+        let mp3_writer = audio.writer(filepath).await?;
+        audio.write_segments(mp3_base_url, mp3_writer, mp3_user_agent).await?;
+
+        Result::<_, VimeoError>::Ok(())
     });
 
     let mp4_user_agent = user_agent.clone();
+    let mp4_tmp_filepath = tmp_dir.path().join("tmp.mp4");
+    let filepath = mp4_tmp_filepath.clone();
+    let url = base_url.clone();
     let mp4_handle = tokio::spawn(async move {
-        video.write_segments(mp4_base_url, mp4_writer, mp4_user_agent).await
+        let mp4_base_url = video.url(&url)?;
+        let mp4_writer = video.writer(filepath).await?;
+        video.write_segments(mp4_base_url, mp4_writer, mp4_user_agent).await?;
+
+        Result::<_, VimeoError>::Ok(())
     });
 
     mp3_handle.await??;
@@ -299,3 +309,4 @@ where
 
     Ok(())
 }
+

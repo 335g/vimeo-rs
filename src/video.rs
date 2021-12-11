@@ -1,5 +1,7 @@
+use reqwest::Url;
 use serde::Deserialize;
 use async_trait::async_trait;
+use crate::error::VimeoError;
 use crate::segment::Segment;
 use crate::get::Get;
 
@@ -15,11 +17,6 @@ impl Video {
     pub fn height(&self) -> f64 {
         self.height
     }
-
-    #[allow(dead_code)]
-    pub fn base_url(&self) -> &str {
-        &self.base_url
-    }
 }
 
 #[async_trait]
@@ -31,4 +28,12 @@ impl Get for Video {
     fn segments(&self) -> &[Segment] {
         &self.segments
     }
+
+    fn url(&self, base_url: &Url) -> Result<Url, VimeoError> {
+        let url = base_url.join(&format!("video/{}", &self.base_url))?;
+
+        Ok(url)
+    }
+
+    
 }
