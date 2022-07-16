@@ -7,7 +7,10 @@ mod segment;
 mod get;
 
 pub use error::VimeoError;
-pub use get::{get_audio, get_video, get_movie};
+pub use get::get_movie;
+pub use audio::Audio;
+pub use video::Video;
+pub use content::Content;
 
 #[cfg(feature = "progressbar")]
 pub use indicatif::{ProgressBar, ProgressStyle, MultiProgress};

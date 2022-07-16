@@ -5,11 +5,23 @@ use crate::segment::Segment;
 use crate::get::Get;
 use crate::error::VimeoError;
 
+#[readonly::make]
 #[derive(Debug, Deserialize)]
 pub struct Audio {
-    base_url: String,
-    init_segment: String,
-    segments: Vec<Segment>
+    pub id: String,
+    pub base_url: String,
+    pub format: String,
+    pub mime_type: String,
+    pub codecs: String,
+    pub bitrate: usize,
+    pub avg_bitrate: usize,
+    pub duration: f32,
+    pub channels: usize,
+    pub sample_rate: usize,
+    pub max_segment_duration: usize,
+    pub init_segment: String,
+    pub index_segment: String,
+    pub segments: Vec<Segment>,
 }
 
 #[async_trait]

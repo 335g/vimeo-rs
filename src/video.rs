@@ -5,18 +5,24 @@ use crate::error::VimeoError;
 use crate::segment::Segment;
 use crate::get::Get;
 
+#[readonly::make]
 #[derive(Debug, Deserialize)]
 pub struct Video {
-    height: f64,
-    base_url: String,
-    init_segment: String,
-    segments: Vec<Segment>,
-}
-
-impl Video {
-    pub fn height(&self) -> f64 {
-        self.height
-    }
+    pub id: String,
+    pub base_url: String,
+    pub format: String,
+    pub mime_type: String,
+    pub codecs: String,
+    pub bitrate: usize,
+    pub avg_bitrate: usize,
+    pub duration: f32,
+    pub framerate: f32,
+    pub width: usize,
+    pub height: usize,
+    pub max_segment_duration: usize,
+    pub init_segment: String,
+    pub index_segment: String,
+    pub segments: Vec<Segment>,
 }
 
 #[async_trait]
