@@ -20,7 +20,7 @@ pub struct Audio {
     pub sample_rate: usize,
     pub max_segment_duration: usize,
     pub init_segment: String,
-    pub index_segment: String,
+    pub index_segment: Option<String>,
     pub segments: Vec<Segment>,
 }
 

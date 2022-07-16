@@ -2,7 +2,6 @@ use serde::Deserialize;
 
 use crate::{VimeoError, audio::Audio, video::Video};
 
-#[readonly::make]
 #[derive(Debug, Deserialize)]
 pub struct Content {
     pub clip_id: String,

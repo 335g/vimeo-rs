@@ -11,6 +11,7 @@ pub use get::get_movie;
 pub use audio::Audio;
 pub use video::Video;
 pub use content::Content;
+pub use get::Get;
 
 #[cfg(feature = "progressbar")]
 pub use indicatif::{ProgressBar, ProgressStyle, MultiProgress};

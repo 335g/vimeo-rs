@@ -486,9 +486,53 @@ where
     log::debug!("info_url: {}", &info_url);
     log::debug!("base_url: {}", &base_url);
 
-    let contents = get_contents(info_url, user_agent.clone()).await?;
+    let mut content = get_contents(info_url.clone(), user_agent.clone()).await?;
+    let audio = content.audios.remove(0);
+    let video = content.videos.remove(0);
+    let content_base_url = content.base_url.clone();
 
-    todo!()
+    let tmp_dir = tempfile::tempdir()?;
+    log::debug!("tmp_dir: {:?}", &tmp_dir);
+
+    let audio_tmp_filepath = tmp_dir.path().join("tmp.mp3");
+    let audio_base_url = info_url.clone().join(&content_base_url)?.join(&audio.base_url)?;
+    let audio_writer = audio.writer(audio_tmp_filepath.clone()).await?;
+    let audio_user_agent = user_agent.clone();
+    let audio_handle = tokio::spawn(async move {
+        let _ = audio.write_segments(audio_base_url, audio_writer, audio_user_agent).await?;
+        Result::<_, VimeoError>::Ok(())
+    });
+
+    let video_tmp_filepath = tmp_dir.path().join("tmp.mp4");
+    let video_base_url = info_url.join(&content_base_url)?.join(&&video.base_url)?;
+    let video_writer = video.writer(video_tmp_filepath.clone()).await?;
+    let video_user_agent = user_agent.clone();
+    let video_handle = tokio::spawn(async move {
+        let _ = video.write_segments(video_base_url, video_writer, video_user_agent).await?;
+        Result::<_, VimeoError>::Ok(())
+    });
+
+    audio_handle.await??;
+    video_handle.await??;
+
+    log::trace!("ffmpeg -i 'mp3_tmp_filepath' -i 'mp4_tmp_filepath' -acodec copy -vcodec copy 'save_file_path'");
+    let _ = std::process::Command::new("ffmpeg")
+        .args(&[
+            "-i",
+            audio_tmp_filepath.to_str().unwrap(),
+            "-i",
+            video_tmp_filepath.to_str().unwrap(),
+            "-acodec",
+            "copy",
+            "-vcodec",
+            "copy",
+            save_file_path.as_ref().to_str().unwrap()
+        ])
+        .output()?;
+    
+    tmp_dir.close()?;
+
+    Ok(())
 }
 
 // #[allow(dead_code)]
