@@ -7,7 +7,7 @@ use crate::get::Get;
 
 #[readonly::make]
 #[derive(Debug, Deserialize)]
-pub struct Video {
+pub struct VideoInfo {
     pub id: String,
     pub base_url: String,
     pub format: String,
@@ -26,7 +26,7 @@ pub struct Video {
 }
 
 #[async_trait]
-impl Get for Video {
+impl Get for VideoInfo {
     fn init_segment(&self) -> &str {
         self.init_segment.as_str()
     }

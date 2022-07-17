@@ -7,7 +7,7 @@ use crate::error::VimeoError;
 
 #[readonly::make]
 #[derive(Debug, Deserialize)]
-pub struct Audio {
+pub struct AudioInfo {
     pub id: String,
     pub base_url: String,
     pub format: String,
@@ -25,7 +25,7 @@ pub struct Audio {
 }
 
 #[async_trait]
-impl Get for Audio {
+impl Get for AudioInfo {
     fn init_segment(&self) -> &str {
         self.init_segment.as_str()
     }

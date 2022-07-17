@@ -8,10 +8,9 @@ mod get;
 
 pub use error::VimeoError;
 pub use get::get_movie;
-pub use audio::Audio;
-pub use video::Video;
-pub use content::Content;
-pub use get::Get;
+pub use audio::AudioInfo;
+pub use video::VideoInfo;
+pub use content::ContentInfo;
 
 #[cfg(feature = "progressbar")]
 pub use indicatif::{ProgressBar, ProgressStyle, MultiProgress};

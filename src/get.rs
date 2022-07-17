@@ -14,7 +14,7 @@ use tokio::fs::File;
 #[cfg(feature = "progressbar")]
 use indicatif::ProgressBar;
 
-use crate::{audio::Audio, content::Content, error::VimeoError, segment::Segment, video::Video};
+use crate::{content::ContentInfo, error::VimeoError, segment::Segment};
 
 #[async_trait]
 pub trait Get: Sized {
@@ -93,7 +93,7 @@ pub trait Get: Sized {
     }
 }
 
-async fn get_urls<U1, U2, V>(at: U1, from: U2, user_agent: V) -> Result<(Url, Url), VimeoError>
+async fn get_urls<U1, U2, V>(at: U1, from: U2, user_agent: V) -> Result<Url, VimeoError>
 where
     U1: IntoUrl,
     HeaderValue: TryFrom<U2>,
@@ -123,31 +123,11 @@ where
         .ok_or(VimeoError::CannotDeserializeThe1stResponse)?;
     let cap = master_regex.captures(&map["content"]).unwrap();
     
-    let info_url = Url::parse(&format!("{}{}{}", &cap[1], &cap[2], &cap[3]))?;
-    let base_url = Url::parse(&cap[1])?;
-
-    return Ok((info_url, base_url))
+    let url = Url::parse(&cap[0])?;
+    Ok(url)
 }
 
-// async fn get_audio_and_video<U, V>(url: U, user_agent: V) -> Result<(Audio, Video), VimeoError>
-// where
-//     U: IntoUrl,
-//     V: TryInto<HeaderValue>,
-//     V::Error: Into<http::Error>,
-// {
-//     let client = reqwest::Client::builder()
-//         .user_agent(user_agent)
-//         .build()?;
-//     let content = client.get(url)
-//         .send()
-//         .await?
-//         .json::<Content>()
-//         .await?;
-    
-//     content.audio_and_video()
-// }
-
-async fn get_contents<U, V>(url: U, user_agent: V) -> Result<Content, VimeoError>
+async fn get_content_info<U, V>(url: U, user_agent: V) -> Result<ContentInfo, VimeoError>
 where
     U: IntoUrl,
     V: TryInto<HeaderValue>,
@@ -159,7 +139,7 @@ where
     let content = client.get(url)
         .send()
         .await?
-        .json::<Content>()
+        .json::<ContentInfo>()
         .await?;
 
     Ok(content)
@@ -482,13 +462,12 @@ where
     V: TryInto<HeaderValue> + Clone + Send + 'static,
     V::Error: Into<http::Error>,
 {
-    let (info_url, base_url) = get_urls(at, from, user_agent.clone()).await?;
+    let info_url = get_urls(at, from, user_agent.clone()).await?;
     log::debug!("info_url: {}", &info_url);
-    log::debug!("base_url: {}", &base_url);
-
-    let mut content = get_contents(info_url.clone(), user_agent.clone()).await?;
-    let audio = content.audios.remove(0);
-    let video = content.videos.remove(0);
+    
+    let mut content = get_content_info(info_url.clone(), user_agent.clone()).await?;
+    let audio = content.audio_infos.remove(0);
+    let video = content.video_infos.remove(0);
     let content_base_url = content.base_url.clone();
 
     let tmp_dir = tempfile::tempdir()?;
