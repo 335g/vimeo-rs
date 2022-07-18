@@ -1,12 +1,9 @@
-use reqwest::Url;
 use serde::Deserialize;
-use async_trait::async_trait;
-use crate::error::VimeoError;
 use crate::segment::Segment;
-use crate::get::Get;
+use crate::content::Contents;
 
 #[readonly::make]
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Clone, Deserialize)]
 pub struct VideoInfo {
     pub id: String,
     pub base_url: String,
@@ -25,8 +22,7 @@ pub struct VideoInfo {
     pub segments: Vec<Segment>,
 }
 
-#[async_trait]
-impl Get for VideoInfo {
+impl Contents for VideoInfo {
     fn init_segment(&self) -> &str {
         self.init_segment.as_str()
     }
@@ -34,12 +30,4 @@ impl Get for VideoInfo {
     fn segments(&self) -> &[Segment] {
         &self.segments
     }
-
-    fn url(&self, base_url: &Url) -> Result<Url, VimeoError> {
-        let url = base_url.join(&format!("video/{}", &self.base_url))?;
-
-        Ok(url)
-    }
-
-    
 }
