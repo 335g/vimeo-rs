@@ -40,8 +40,7 @@ where
         .next()
         .ok_or(VimeoError::CannotDeserializeThe1stResponse)?;
     let cap = master_regex.captures(&map["content"]).unwrap();
-    
-    let url = Url::parse(&cap[0])?;
+    let url = Url::parse(&format!("{}{}{}", &cap[1], &cap[2], &cap[3]))?;
     Ok(url)
 }
 
@@ -81,7 +80,7 @@ where
 // }
 
 #[allow(dead_code)]
-pub async fn get_movie<U1, U2, P, V>(client: &Client, target: U1, referer: U2, save_file_path: P) -> Result<(), VimeoError>
+pub async fn get_movie<U1, U2, P>(client: &Client, target: U1, referer: U2, save_file_path: P) -> Result<(), VimeoError>
 where
     U1: IntoUrl,
     U1: IntoUrl,
@@ -90,6 +89,7 @@ where
     P: AsRef<Path>,
 {
     let info_url = info_url_request(client, target, referer).await?;
+    println!("{}", info_url.to_string());
     
     let mut content = client.get(info_url.clone()).send().await?.json::<ContentInfo>().await?;
     let audio = content.audio_infos.remove(0);

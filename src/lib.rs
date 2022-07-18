@@ -17,3 +17,5 @@ pub use indicatif::{ProgressBar, ProgressStyle, MultiProgress};
 
 #[cfg(feature = "progressbar")]
 pub use get::get_movie_with;
+
+pub use reqwest::Client;

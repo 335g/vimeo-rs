@@ -1,7 +1,7 @@
 [package]
 name = "vimeo-rs"
 description = "vimeo contents for Rust"
-version = "0.1.6"
+version = "0.1.7"
 rust-version = "1.56"
 categories = ["multimedia"]
 keywords = ["vimeo"]
