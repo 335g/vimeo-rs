@@ -2,12 +2,14 @@ use std::path::{Path, PathBuf};
 
 use reqwest::Client;
 use tempfile::TempDir;
+use tokio::sync::OnceCell;
 #[cfg(feature = "progressbar")]
 use tokio::sync::mpsc::{self, Sender};
 
 use easy_scraper::Pattern;
 use regex::Regex;
 use reqwest::{IntoUrl, Url, header::HeaderValue};
+use crate::config::PlayerConfig;
 use crate::content::{write_segments, Contents};
 
 #[cfg(feature = "progressbar")]
@@ -15,6 +17,14 @@ use indicatif::ProgressBar;
 
 use crate::{AudioInfo, VideoInfo};
 use crate::{content::ContentInfo, error::VimeoError};
+
+async fn get_player_config_regex() -> &'static Regex {
+    PLAYER_CONFIG_REGEX.get_or_init(|| async {
+        Regex::new(r#"window\.playerConfig = (\{.+\})"#).unwrap()
+    }).await
+}
+
+static PLAYER_CONFIG_REGEX: OnceCell<Regex> = OnceCell::const_new();
 
 async fn info_url_request<U1, U2>(client: &Client, target: U1, referer: U2) -> Result<Url, VimeoError>
 where
@@ -44,40 +54,34 @@ where
     Ok(url)
 }
 
-// #[allow(dead_code)]
-// pub async fn content_info_request<U1, U2>(client: &Client, target: U1, referer: U2) -> Result<ContentInfo, VimeoError>
-// where
-//     U1: IntoUrl,
-//     U2: IntoUrl,
-//     HeaderValue: TryFrom<U2>,
-//     <HeaderValue as TryFrom<U2>>::Error: Into<http::Error>,
-// {
-//     let info_url = info_url_request(client, target, referer).await?;
-//     let content_info = client.get(info_url)
-//         .send()
-//         .await?
-//         .json::<ContentInfo>()
-//         .await?;
+async fn get_player_config<U1, U2>(client: &Client, target: U1, referer: U2) -> Result<PlayerConfig, VimeoError>
+where
+    U1: IntoUrl,
+    HeaderValue: TryFrom<U2>,
+    <HeaderValue as TryFrom<U2>>::Error: Into<http::Error>,
+{
+    let req = client.get(target)
+        .header("referer", referer)
+        .build()?;
+    let resp = client.execute(req)
+        .await?
+        .text()
+        .await?;
+    let pat = Pattern::new(r#"
+        <body><script>{{content}}</script></body>
+    "#).unwrap();
     
-//     Ok(content_info)
-// }
-
-// #[allow(dead_code)]
-// pub async fn get_the_movie<P>(
-//     client: &Client, 
-//     content_info: &ContentInfo,
-//     audio_info_index: usize, 
-//     video_info_index: usize, 
-//     save_file_path: P) -> Result<(), VimeoError> 
-// where
-//     P: AsRef<Path>,
-// {
-//     let content_base_url = content_info.base_url.clone();
-//     let audio = content_info.audio_infos.get(audio_info_index).ok_or(VimeoError::NoAudio)?.clone();
-//     let video = content_info.video_infos.get(video_info_index).ok_or(VimeoError::NoVideo)?.clone();
-
-//     todo!()
-// }
+    let matches = pat.matches(&resp);
+    let matches1 = matches.first()
+        .ok_or(VimeoError::NoPlayerConfig)?;
+    let content = matches1.get("content").expect("is script");
+    let caps = get_player_config_regex().await
+        .captures(content.as_str())
+        .ok_or(VimeoError::NoPlayerConfig)?;
+    let config = serde_json::from_str(caps.get(1).expect("valid regex").as_str())?;
+    
+    Ok(config)
+}
 
 #[allow(dead_code)]
 pub async fn get_movie<U1, U2, P>(client: &Client, target: U1, referer: U2, save_file_path: P) -> Result<(), VimeoError>

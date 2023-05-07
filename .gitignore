@@ -3,3 +3,8 @@ Cargo.lock
 examples
 .DS_Store
 .vscode
+notebooks
+pyproject.toml
+.venv
+requirements*
+.python-version

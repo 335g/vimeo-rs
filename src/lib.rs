@@ -5,6 +5,7 @@ mod video;
 mod content;
 mod segment;
 mod get;
+pub mod config;
 
 pub use error::VimeoError;
 pub use get::get_movie;

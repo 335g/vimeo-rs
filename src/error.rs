@@ -14,6 +14,9 @@ pub enum VimeoError {
     #[error("tokio task join error: {0:?}")]
     Join(#[from] tokio::task::JoinError),
 
+    #[error("invalid json: {0:?}")]
+    Json(#[from] serde_json::Error),
+
     #[error("Cannot find the ffmpeg")]
     CannotFindFFmpeg,
 
@@ -28,6 +31,9 @@ pub enum VimeoError {
 
     #[error("No Video")]
     NoVideo,
+
+    #[error("No Player Config")]
+    NoPlayerConfig,
 
     #[error("is not success: {0:?}")]
     IsNotSuccess(reqwest::StatusCode),
