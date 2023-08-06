@@ -9,7 +9,7 @@ use tokio::sync::mpsc::{self, Sender};
 use easy_scraper::Pattern;
 use regex::Regex;
 use reqwest::{IntoUrl, Url, header::HeaderValue};
-use crate::config::PlayerConfig;
+use crate::config::{PlayerConfig, dash_cdns};
 use crate::content::{write_segments, Contents};
 
 #[cfg(feature = "progressbar")]
@@ -17,14 +17,6 @@ use indicatif::ProgressBar;
 
 use crate::{AudioInfo, VideoInfo};
 use crate::{content::ContentInfo, error::VimeoError};
-
-async fn get_player_config_regex() -> &'static Regex {
-    PLAYER_CONFIG_REGEX.get_or_init(|| async {
-        Regex::new(r#"window\.playerConfig = (\{.+\})"#).unwrap()
-    }).await
-}
-
-static PLAYER_CONFIG_REGEX: OnceCell<Regex> = OnceCell::const_new();
 
 async fn info_url_request<U1, U2>(client: &Client, target: U1, referer: U2) -> Result<Url, VimeoError>
 where
@@ -54,35 +46,6 @@ where
     Ok(url)
 }
 
-async fn get_player_config<U1, U2>(client: &Client, target: U1, referer: U2) -> Result<PlayerConfig, VimeoError>
-where
-    U1: IntoUrl,
-    HeaderValue: TryFrom<U2>,
-    <HeaderValue as TryFrom<U2>>::Error: Into<http::Error>,
-{
-    let req = client.get(target)
-        .header("referer", referer)
-        .build()?;
-    let resp = client.execute(req)
-        .await?
-        .text()
-        .await?;
-    let pat = Pattern::new(r#"
-        <body><script>{{content}}</script></body>
-    "#).unwrap();
-    
-    let matches = pat.matches(&resp);
-    let matches1 = matches.first()
-        .ok_or(VimeoError::NoPlayerConfig)?;
-    let content = matches1.get("content").expect("is script");
-    let caps = get_player_config_regex().await
-        .captures(content.as_str())
-        .ok_or(VimeoError::NoPlayerConfig)?;
-    let config = serde_json::from_str(caps.get(1).expect("valid regex").as_str())?;
-    
-    Ok(config)
-}
-
 #[allow(dead_code)]
 pub async fn get_movie<U1, U2, P>(client: &Client, target: U1, referer: U2, save_file_path: P) -> Result<(), VimeoError>
 where
@@ -92,8 +55,10 @@ where
     <HeaderValue as TryFrom<U2>>::Error: Into<http::Error>,
     P: AsRef<Path>,
 {
-    let info_url = info_url_request(client, target, referer).await?;
-    println!("{}", info_url.to_string());
+    let cdns = dash_cdns(client, target, referer).await?;
+    
+    // TODO: handling multiple url
+    let info_url = &cdns[0].avc_url;
     
     let mut content = client.get(info_url.clone()).send().await?.json::<ContentInfo>().await?;
     let audio = content.audio_infos.remove(0);
