@@ -24,11 +24,11 @@ pub struct PlayerConfig {
 }
 
 impl PlayerConfig {
-    pub fn dash_cdns(&self) -> &HashMap<String, Cdn> {
+    pub fn dash_cdns(&self) -> &HashMap<String, Cdn<MasterJsonUrl>> {
         &self.request.files.dash.cdns.0
     }
 
-    pub fn dash_default_cdn(&self) -> Option<&Cdn> {
+    pub fn dash_default_cdn(&self) -> Option<&Cdn<MasterJsonUrl>> {
         let default_cdn = &self.request.files.dash.default_cdn;
 
         self.request.files.dash.cdns.0.get(default_cdn)
@@ -44,18 +44,18 @@ impl PlayerConfig {
             .into_iter()
             .map(|cdn| {
                 MasterUrl {
-                    avc_url: cdn.avc_url.clone(),
-                    url: cdn.url.clone(),
+                    avc_url: cdn.avc_url.url().clone(),
+                    url: cdn.url.url().clone(),
                 }
             })
             .collect()
     }
 
-    pub fn hls_cdns(&self) -> &HashMap<String, Cdn> {
+    pub fn hls_cdns(&self) -> &HashMap<String, Cdn<M3U8Url>> {
         &self.request.files.hls.cdns.0
     }
 
-    pub fn hls_default_cdn(&self) -> Option<&Cdn> {
+    pub fn hls_default_cdn(&self) -> Option<&Cdn<M3U8Url>> {
         let default_cdn = &self.request.files.hls.default_cdn;
 
         self.request.files.hls.cdns.0.get(default_cdn)
@@ -111,7 +111,7 @@ pub struct Files {
 
 #[derive(Debug, Deserialize)]
 pub struct Dash {
-    cdns: Cdns,
+    cdns: Cdns<MasterJsonUrl>,
     default_cdn: String,
     separate_av: bool,
     streams: Vec<Stream>,
@@ -120,20 +120,42 @@ pub struct Dash {
 
 #[derive(Debug, Deserialize)]
 pub struct Hls {
-    cdns: Cdns,
+    cdns: Cdns<M3U8Url>,
     default_cdn: String,
     separate_av: bool,
 }
 
 #[derive(Debug, Deserialize)]
-pub struct Cdns(HashMap<String, Cdn>);
+pub struct Cdns<U: HasUrl>(HashMap<String, Cdn<U>>);
 
 #[readonly::make]
 #[derive(Debug, Deserialize)]
-pub struct Cdn {
-    pub avc_url: Url,
+pub struct Cdn<U: HasUrl> {
+    pub avc_url: U,
     pub origin: String,
-    pub url: Url,
+    pub url: U,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct MasterJsonUrl(Url);
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct M3U8Url(Url);
+
+pub trait HasUrl {
+    fn url(&self) -> &Url;
+}
+
+impl HasUrl for MasterJsonUrl {
+    fn url(&self) -> &Url {
+        &self.0
+    }
+}
+
+impl HasUrl for M3U8Url {
+    fn url(&self) -> &Url {
+        &self.0
+    }
 }
 
 #[derive(Debug, Deserialize)]
