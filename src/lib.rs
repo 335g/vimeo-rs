@@ -2,14 +2,18 @@
 mod error;
 mod player;
 mod content;
+mod audio;
+mod video;
 
 use scraper::{Html, Selector};
 use tokio::sync::OnceCell;
 use regex::Regex;
 
 pub use player::PlayerConfig;
-pub use content::{Content, Audio, Video};
+pub use content::Content;
 pub use error::VimeoError;
+pub use audio::{Audio, AudioExp};
+pub use video::{Video, VideoExp};
 
 static CONFIG_REGEX: OnceCell<Regex> = OnceCell::const_new();
 

@@ -30,10 +30,8 @@ serde_json = "1.0"
 thiserror = "1"
 time = { version = "0.3.25", features = ["serde"] }
 tokio = { version = "1.28", features = ["sync", "macros", "parking_lot"] }
-tokio-stream = "0.1.14"
 tokio-util = "0.7.8"
 url = { version = "2.4", features = ["serde"] }
 uuid = { version = "1.4.1", features = ["v4", "serde"] }
-which = "4.4"
 
 [dev-dependencies]
