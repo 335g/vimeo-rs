@@ -1,39 +1,62 @@
-use reqwest::Url;
-use serde::Deserialize;
-use async_trait::async_trait;
-use crate::error::VimeoError;
-use crate::segment::Segment;
-use crate::get::Get;
+use serde::{Deserialize, Serialize};
+use crate::content::{Segment, Extractable};
 
-#[derive(Debug, Deserialize)]
+#[readonly::make]
+#[derive(Debug, Deserialize, Serialize)]
 pub struct Video {
-    height: f64,
-    base_url: String,
-    init_segment: String,
-    segments: Vec<Segment>,
+    pub avg_bitrate: usize,
+    pub base_url: String,
+    pub bitrate: usize,
+    pub codecs: String,
+    pub duration: f32,
+    pub format: String,
+    pub framerate: f32,
+    pub height: usize,
+    pub id: String,
+    pub index_segment: Option<String>,
+    pub init_segment: String,
+    pub max_segment_duration: usize,
+    pub mime_type: String,
+    pub segments: Vec<Segment>,
+    pub width: usize,
 }
 
 impl Video {
-    pub fn height(&self) -> f64 {
-        self.height
+    pub fn expression(&self) -> VideoExp {
+        VideoExp { 
+            bitrate: self.bitrate, 
+            codecs: self.codecs.clone(),
+            framerate: self.framerate, 
+            width: self.width, 
+            height: self.height
+        }
     }
 }
 
-#[async_trait]
-impl Get for Video {
-    fn init_segment(&self) -> &str {
-        self.init_segment.as_str()
+impl Extractable for Video {
+    fn init_segment(&self) ->  &str {
+        &self.init_segment
     }
 
-    fn segments(&self) -> &[Segment] {
+    fn base_url(&self) ->  &str {
+        &self.base_url
+    }
+
+    fn index_segment(&self) -> Option<&str> {
+        self.index_segment.as_ref().map(|s| s.as_str())
+    }
+
+    fn segments(&self) ->  &Vec<Segment>  {
         &self.segments
     }
+}
 
-    fn url(&self, base_url: &Url) -> Result<Url, VimeoError> {
-        let url = base_url.join(&format!("video/{}", &self.base_url))?;
-
-        Ok(url)
-    }
-
-    
+#[readonly::make]
+#[derive(Debug, Clone, PartialEq)]
+pub struct VideoExp {
+    pub bitrate: usize,
+    pub codecs: String,
+    pub framerate: f32,
+    pub width: usize,
+    pub height: usize,
 }

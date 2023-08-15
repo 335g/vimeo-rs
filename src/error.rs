@@ -1,34 +1,18 @@
-use thiserror::Error;
 
-#[derive(Debug, Error)]
+#[derive(Debug, thiserror::Error)]
 pub enum VimeoError {
-    #[error("IO error: {0:?}")]
-    Io(#[from] std::io::Error),
+    #[error("no player.config object")]
+    NoPlayerConfig,
 
-    #[error("base64 decode error: {0:?}")]
-    Base64Decode(#[from] base64::DecodeError),
+    #[error("json ser/de error: {0:?}")]
+    Json(#[from] serde_json::Error),
 
-    #[error("Networking error: {0:?}")]
-    Reqwest(#[from] reqwest::Error),
+    #[error("time parse error: {0:?}")]
+    TimeParse(#[from] time::error::Parse),
 
-    #[error("tokio task join error: {0:?}")]
-    Join(#[from] tokio::task::JoinError),
+    #[error("invalid url: {0:?}")]
+    InvalidUrl(String),
 
-    #[error("Cannot find the ffmpeg")]
-    CannotFindFFmpeg,
-
-    #[error("No 'master.json' description found in the response")]
-    CannotDeserializeThe1stResponse,
-
-    #[error("Parse url error: {0:?}")]
-    ParseUrl(#[from] url::ParseError),
-
-    #[error("No Audio")]
-    NoAudio,
-
-    #[error("No Video")]
-    NoVideo,
-
-    #[error("is not success: {0:?}")]
-    IsNotSuccess(reqwest::StatusCode),
+    #[error("failed assemble content: {reason}")]
+    FailedAssembleContent { reason: String }
 }

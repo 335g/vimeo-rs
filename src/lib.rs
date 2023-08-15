@@ -1,16 +1,12 @@
 
 mod error;
+mod player;
+mod content;
 mod audio;
 mod video;
-mod content;
-mod segment;
-mod get;
 
+pub use player::PlayerConfig;
+pub use content::Content;
 pub use error::VimeoError;
-pub use get::{get_audio, get_video, get_movie};
-
-#[cfg(feature = "progressbar")]
-pub use indicatif::{ProgressBar, ProgressStyle, MultiProgress};
-
-#[cfg(feature = "progressbar")]
-pub use get::{get_audio_with, get_video_with, get_movie_with};
+pub use audio::{Audio, AudioExp};
+pub use video::{Video, VideoExp};
