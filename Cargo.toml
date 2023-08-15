@@ -21,17 +21,21 @@ default = []
 async-trait = "0.1.73"
 base64 = "0.21.2"
 futures = "0.3.28"
+parse-display = "0.8.2"
 readonly = "0.2.11"
 regex = "1.9.3"
-reqwest = { version = "0.11", features = ["json"] }
+reqwest = { version = "0.11", features = ["json", "cookies"] }
 scraper = "0.17.1"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 thiserror = "1"
-time = { version = "0.3.25", features = ["serde"] }
+time = { version = "0.3.25", features = ["serde", "parsing"] }
 tokio = { version = "1.28", features = ["sync", "macros", "parking_lot"] }
 tokio-util = "0.7.8"
+ua_generator = "0.3.5"
 url = { version = "2.4", features = ["serde"] }
 uuid = { version = "1.4.1", features = ["v4", "serde"] }
 
 [dev-dependencies]
+clap = { version = "4.3.21", features = ["derive"] }
+tokio = { version = "1.28", features = ["rt-multi-thread"] }

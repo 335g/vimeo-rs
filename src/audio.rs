@@ -1,5 +1,5 @@
 use serde::{Deserialize, Serialize};
-use crate::content::{Segment, Assemblable};
+use crate::content::{Segment, Extractable};
 
 #[readonly::make]
 #[derive(Debug, Deserialize, Serialize)]
@@ -12,7 +12,7 @@ pub struct Audio {
     pub duration: f32,
     pub format: String,
     pub id: String,
-    pub index_segment: String,
+    pub index_segment: Option<String>,
     pub init_segment: String,
     pub max_segment_duration: usize,
     pub mime_type: String,
@@ -31,7 +31,7 @@ impl Audio {
     }
 }
 
-impl Assemblable for Audio {
+impl Extractable for Audio {
     fn init_segment(&self) ->  &str {
         &self.init_segment
     }
@@ -40,8 +40,8 @@ impl Assemblable for Audio {
         &self.base_url
     }
 
-    fn index_segment(&self) ->  &str {
-        &self.index_segment
+    fn index_segment(&self) -> Option<&str> {
+        self.index_segment.as_ref().map(|s| s.as_str())
     }
 
     fn segments(&self) ->  &Vec<Segment>  {
