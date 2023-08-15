@@ -2,7 +2,7 @@
 name = "vimeo-rs"
 description = "vimeo contents for Rust"
 version = "0.2.0"
-rust-version = "1.56"
+rust-version = "1.70"
 categories = ["multimedia"]
 keywords = ["vimeo"]
 edition = "2021"
