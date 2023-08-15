@@ -1,7 +1,13 @@
 #![allow(dead_code)]
 
-use serde::Deserialize;
+use base64::Engine;
+use futures::StreamExt;
+use reqwest::Client;
+use serde::{Deserialize, Serialize};
+use url::Url;
+use tokio::io::AsyncWriteExt;
 
+use crate::VimeoError;
 
 #[derive(Debug, Deserialize)]
 pub struct Content {
@@ -49,9 +55,33 @@ impl Content {
             .map(|video| video.expression())
             .collect()
     }
+
+    pub async fn assemble_audio(&self, audio: &Audio, base_url: Url, buf: &mut Vec<u8>) -> Result<(), VimeoError> {
+        let base_url = base_url.join(&self.base_url)
+            .map_err(|_| VimeoError::FailedAssembleContent { reason: "cannot join base_url - Content".to_string() })?;
+        
+        audio.assemble(base_url, buf).await?;
+
+        Ok(())
+    }
+
+    pub async fn assemble_video(&self, video: &Video, base_url: Url, buf: &mut Vec<u8>) -> Result<(), VimeoError> {
+        let base_url = base_url.join(&self.base_url)
+            .map_err(|_| VimeoError::FailedAssembleContent { reason: "cannot join base_url - Content".to_string() })?;
+        
+        video.assemble(base_url, buf).await?;
+
+        Ok(())
+    }
+
+    pub fn mp3_audios(&self) -> Vec<&Audio> {
+        self.audio.iter()
+            .filter(|audio| audio.codecs.starts_with("mp4a"))
+            .collect()
+    }
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Serialize)]
 pub struct Audio {
     avg_bitrate: usize,
     base_url: String,
@@ -78,9 +108,58 @@ impl Audio {
             sample_rate: self.sample_rate,
         }
     }
+
+    pub async fn assemble(&self, base_url: Url, buf: &mut Vec<u8>) -> Result<(), VimeoError> {
+        base64::engine::general_purpose::STANDARD
+            .decode_vec(&self.init_segment, buf)
+            .map_err(|_| VimeoError::FailedAssembleContent { reason: "cannot decode init_segment - Audio".to_string() })?;
+
+        let base_url = base_url.join(&self.base_url)
+            .map_err(|_| VimeoError::FailedAssembleContent { reason: "cannot join base_url - Audio".to_string() })?;
+        let client = Client::builder()
+            .build()
+            .map_err(|_| VimeoError::FailedAssembleContent { reason: "cannot build network client - Audio".to_string() })?;
+        
+        // index_segment
+        let url = base_url.join(&self.index_segment)
+            .map_err(|_| VimeoError::FailedAssembleContent { reason: "cannot join url (index_segment) - Audio".to_string() })?;
+        let request = client.get(url)
+            .build()
+            .map_err(|_| VimeoError::FailedAssembleContent { reason: "cannot construct request (index_segment) - Audio".to_string() })?;
+        let content = client.execute(request)
+            .await
+            .map_err(|_| VimeoError::FailedAssembleContent { reason: "cannot get response (index_segment) - Audio".to_string() })?
+            .bytes()
+            .await
+            .map_err(|_| VimeoError::FailedAssembleContent { reason: "cannot construct byte response (index_segment) - Audio".to_string() })?;
+        buf.write_all(&content)
+            .await
+            .map_err(|_| VimeoError::FailedAssembleContent { reason: "cannot write content to buf (index_segment) - Audio".to_string() })?;
+
+        // segments
+        let mut segments = tokio_stream::iter(&self.segments);
+        while let Some(segment) = segments.next().await {
+            let url = base_url.join(&segment.url)
+                .map_err(|_| VimeoError::FailedAssembleContent { reason: "cannot join url (segments) - Audio".to_string() })?;
+            let request = client.get(url)
+                .build()
+                .map_err(|_| VimeoError::FailedAssembleContent { reason: "cannot construct request (segments) - Audio".to_string() })?;
+            let content = client.execute(request)
+                .await
+                .map_err(|_| VimeoError::FailedAssembleContent { reason: "cannot get response (segments) - Audio".to_string() })?
+                .bytes()
+                .await
+                .map_err(|_| VimeoError::FailedAssembleContent { reason: "cannot construct byte response (segments) - Audio".to_string() })?;
+            buf.write_all(&content)
+                .await
+                .map_err(|_| VimeoError::FailedAssembleContent { reason: "cannot write content to buf (segments) - Audio".to_string() })?;
+        }
+
+        Ok(())
+    }
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Serialize)]
 pub struct Video {
     avg_bitrate: usize,
     base_url: String,
@@ -109,9 +188,58 @@ impl Video {
             height: self.height
         }
     }
+
+    pub async fn assemble(&self, base_url: Url, buf: &mut Vec<u8>) -> Result<(), VimeoError> {
+        base64::engine::general_purpose::STANDARD
+            .decode_vec(&self.init_segment, buf)
+            .map_err(|_| VimeoError::FailedAssembleContent { reason: "cannot decode init_segment - Video".to_string() })?;
+
+        let base_url = base_url.join(&self.base_url)
+            .map_err(|_| VimeoError::FailedAssembleContent { reason: "cannot join base_url - Video".to_string() })?;
+        let client = Client::builder()
+            .build()
+            .map_err(|_| VimeoError::FailedAssembleContent { reason: "cannot build network client - Video".to_string() })?;
+        
+        // index_segment
+        let url = base_url.join(&self.index_segment)
+            .map_err(|_| VimeoError::FailedAssembleContent { reason: "cannot join url (index_segment) - Video".to_string() })?;
+        let request = client.get(url)
+            .build()
+            .map_err(|_| VimeoError::FailedAssembleContent { reason: "cannot construct request (index_segment) - Video".to_string() })?;
+        let content = client.execute(request)
+            .await
+            .map_err(|_| VimeoError::FailedAssembleContent { reason: "cannot get response (index_segment) - Video".to_string() })?
+            .bytes()
+            .await
+            .map_err(|_| VimeoError::FailedAssembleContent { reason: "cannot construct byte response (index_segment) - Video".to_string() })?;
+        buf.write_all(&content)
+            .await
+            .map_err(|_| VimeoError::FailedAssembleContent { reason: "cannot write content to buf (index_segment) - Video".to_string() })?;
+
+        // segments
+        let mut segments = tokio_stream::iter(&self.segments);
+        while let Some(segment) = segments.next().await {
+            let url = base_url.join(&segment.url)
+                .map_err(|_| VimeoError::FailedAssembleContent { reason: "cannot join url (segments) - Video".to_string() })?;
+            let request = client.get(url)
+                .build()
+                .map_err(|_| VimeoError::FailedAssembleContent { reason: "cannot construct request (segments) - Video".to_string() })?;
+            let content = client.execute(request)
+                .await
+                .map_err(|_| VimeoError::FailedAssembleContent { reason: "cannot get response (segments) - Video".to_string() })?
+                .bytes()
+                .await
+                .map_err(|_| VimeoError::FailedAssembleContent { reason: "cannot construct byte response (segments) - Video".to_string() })?;
+            buf.write_all(&content)
+                .await
+                .map_err(|_| VimeoError::FailedAssembleContent { reason: "cannot write content to buf (segments) - Video".to_string() })?;
+        }
+
+        Ok(())
+    }
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Serialize)]
 pub struct Segment {
     start: f32,
     end: f32,
@@ -134,40 +262,4 @@ pub struct VideoExp {
     framerate: f32,
     width: usize,
     height: usize,
-}
-
-#[cfg(test)]
-mod tests {
-    use std::io::Read;
-    use reqwest::Client;
-    use crate::player_config;
-
-    use super::*;
-
-    #[tokio::test]
-    async fn test_audio() {
-        let mut f = std::fs::File::open("data/b.html").expect("is file");
-        let mut html = String::new();
-        f.read_to_string(&mut html).unwrap();
-
-        let config = player_config(&html).await.expect("is player config");
-        // if let Some(cdn) = config.dash_default_cdn() {
-        //     let client = Client::builder().build().unwrap();
-        //     let request = client.get(cdn.avc_url.clone()).build().unwrap();
-        //     let content = client.execute(request)
-        //         .await
-        //         .expect("aaa")
-        //         .json::<Content>()
-        //         .await
-        //         .expect("bbb");
-
-        //     let audio1 = &content.audio[0];
-        //     println!("{:?}", audio1);
-        // }
-
-        if let Some(master_url) = config.master_urls().get(0) {
-            let base_url = master_url.base_url().await.expect("is master url");
-            println!("{}", base_url);
-        }
-    }
 }

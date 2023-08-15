@@ -7,6 +7,9 @@ pub enum VimeoError {
     #[error("invalid player config")]
     InvalidPlayerConfig,
 
-    #[error("invalid url (master.json)")]
-    InvalidMasterUrl,
+    #[error("invalid url: {0:?}")]
+    InvalidUrl(String),
+
+    #[error("failed assemble content: {reason}")]
+    FailedAssembleContent { reason: String }
 }

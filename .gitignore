@@ -3,4 +3,3 @@ Cargo.lock
 .DS_Store
 .vscode
 data/*
-test/dev.rs

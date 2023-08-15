@@ -1,21 +1,18 @@
 #![allow(dead_code)]
 
-use std::{collections::HashMap, ops::Deref};
+use std::{collections::HashMap, sync::OnceLock};
 use regex::Regex;
 use serde::Deserialize;
-use tokio::sync::OnceCell;
 use url::Url;
 use uuid::Uuid;
 use time::OffsetDateTime;
 
-use crate::VimeoError;
+static MASTER_URL_REGEX: OnceLock<Regex> = OnceLock::new();
 
-static MASTER_URL_REGEX: OnceCell<Regex> = OnceCell::const_new();
-
-async fn master_url_regex() -> &'static Regex {
-    MASTER_URL_REGEX.get_or_init(|| async {
+fn master_url_regex() -> &'static Regex {
+    MASTER_URL_REGEX.get_or_init(|| {
         Regex::new(r#"(?P<base>https://.+/sep/)video/[0-9a-z]{8}(,[0-9a-z]{8})*/audio/[0-9a-z]{8}(,[0-9a-z]{8})*/master\.json.+"#).unwrap()
-    }).await
+    })
 }
 
 #[derive(Debug, Deserialize)]
@@ -24,70 +21,24 @@ pub struct PlayerConfig {
 }
 
 impl PlayerConfig {
-    pub fn dash_cdns(&self) -> &HashMap<String, Cdn<MasterJsonUrl>> {
+    pub fn dash_cdns(&self) -> &HashMap<String, Cdn> {
         &self.request.files.dash.cdns.0
     }
 
-    pub fn dash_default_cdn(&self) -> Option<&Cdn<MasterJsonUrl>> {
+    pub fn dash_default_cdn(&self) -> Option<&Cdn> {
         let default_cdn = &self.request.files.dash.default_cdn;
 
         self.request.files.dash.cdns.0.get(default_cdn)
     }
 
-    pub fn master_urls(&self) -> Vec<MasterUrl> {
-        self.request
-            .files
-            .dash
-            .cdns
-            .0
-            .values()
-            .into_iter()
-            .map(|cdn| {
-                MasterUrl {
-                    avc_url: cdn.avc_url.url().clone(),
-                    url: cdn.url.url().clone(),
-                }
-            })
-            .collect()
-    }
-
-    pub fn hls_cdns(&self) -> &HashMap<String, Cdn<M3U8Url>> {
+    pub fn hls_cdns(&self) -> &HashMap<String, Cdn> {
         &self.request.files.hls.cdns.0
     }
 
-    pub fn hls_default_cdn(&self) -> Option<&Cdn<M3U8Url>> {
+    pub fn hls_default_cdn(&self) -> Option<&Cdn> {
         let default_cdn = &self.request.files.hls.default_cdn;
 
         self.request.files.hls.cdns.0.get(default_cdn)
-    }
-}
-
-#[readonly::make]
-#[derive(Debug)]
-pub struct MasterUrl {
-    pub avc_url: Url,
-    pub url: Url,
-}
-
-impl MasterUrl {
-    pub async fn base_url(&self) -> Result<Url, VimeoError> {
-        let caps = master_url_regex().await
-            .captures(&self.url.as_str())
-            .ok_or(VimeoError::InvalidMasterUrl)?;
-
-        let url = caps.name("base").expect("is base url").as_str();
-        let url = Url::parse(url).expect("is url");
-        Ok(url)
-    }
-
-    pub async fn avc_base_url(&self) -> Result<Url, VimeoError> {
-        let caps = master_url_regex().await
-            .captures(&self.avc_url.as_str())
-            .ok_or(VimeoError::InvalidMasterUrl)?;
-
-        let url = caps.name("base").expect("is base url").as_str();
-        let url = Url::parse(url).expect("is url");
-        Ok(url)
     }
 }
 
@@ -111,7 +62,7 @@ pub struct Files {
 
 #[derive(Debug, Deserialize)]
 pub struct Dash {
-    cdns: Cdns<MasterJsonUrl>,
+    cdns: Cdns,
     default_cdn: String,
     separate_av: bool,
     streams: Vec<Stream>,
@@ -120,42 +71,20 @@ pub struct Dash {
 
 #[derive(Debug, Deserialize)]
 pub struct Hls {
-    cdns: Cdns<M3U8Url>,
+    cdns: Cdns,
     default_cdn: String,
     separate_av: bool,
 }
 
 #[derive(Debug, Deserialize)]
-pub struct Cdns<U: HasUrl>(HashMap<String, Cdn<U>>);
+pub struct Cdns(HashMap<String, Cdn>);
 
 #[readonly::make]
 #[derive(Debug, Deserialize)]
-pub struct Cdn<U: HasUrl> {
-    pub avc_url: U,
+pub struct Cdn {
+    pub avc_url: Url,
     pub origin: String,
-    pub url: U,
-}
-
-#[derive(Debug, Clone, Deserialize)]
-pub struct MasterJsonUrl(Url);
-
-#[derive(Debug, Clone, Deserialize)]
-pub struct M3U8Url(Url);
-
-pub trait HasUrl {
-    fn url(&self) -> &Url;
-}
-
-impl HasUrl for MasterJsonUrl {
-    fn url(&self) -> &Url {
-        &self.0
-    }
-}
-
-impl HasUrl for M3U8Url {
-    fn url(&self) -> &Url {
-        &self.0
-    }
+    pub url: Url,
 }
 
 #[derive(Debug, Deserialize)]
