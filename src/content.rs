@@ -80,9 +80,9 @@ impl Content {
 #[readonly::make]
 #[derive(Debug, Deserialize, Serialize)]
 pub struct Segment {
-    start: f32,
-    end: f32,
-    size: usize,
+    pub start: f32,
+    pub end: f32,
+    pub size: usize,
     pub url: String,
 }
 
