@@ -14,5 +14,5 @@ pub enum VimeoError {
     InvalidUrl(String),
 
     #[error("failed assemble content: {reason}")]
-    FailedAssembleContent { reason: String }
+    CannotExtract { reason: String }
 }

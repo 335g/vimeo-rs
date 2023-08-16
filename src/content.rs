@@ -58,14 +58,14 @@ impl Content {
 
     pub async fn extract_audio(&self, audio: &Audio, base_url: Url) -> Result<Vec<u8>, VimeoError> {
         let base_url = base_url.join(&self.base_url)
-            .map_err(|_| VimeoError::FailedAssembleContent { reason: "cannot join base_url - Content".to_string() })?;
+            .map_err(|_| VimeoError::CannotExtract { reason: "cannot join base_url - Content".to_string() })?;
         
         audio.extract(base_url).await
     }
 
     pub async fn extract_video(&self, video: &Video, base_url: Url) -> Result<Vec<u8>, VimeoError> {
         let base_url = base_url.join(&self.base_url)
-            .map_err(|_| VimeoError::FailedAssembleContent { reason: "cannot join base_url - Content".to_string() })?;
+            .map_err(|_| VimeoError::CannotExtract { reason: "cannot join base_url - Content".to_string() })?;
         
         video.extract(base_url).await
     }
@@ -98,31 +98,31 @@ pub trait Extractable {
 
         base64::engine::general_purpose::STANDARD
             .decode_vec(self.init_segment(), &mut buf)
-            .map_err(|_| VimeoError::FailedAssembleContent { reason: "cannot decode init_segment".to_string() })?;
+            .map_err(|_| VimeoError::CannotExtract { reason: "cannot decode init_segment".to_string() })?;
 
         let client = Client::builder()
             .build()
-            .map_err(|_| VimeoError::FailedAssembleContent { reason: "cannot build network client".to_string() })?;
+            .map_err(|_| VimeoError::CannotExtract { reason: "cannot build network client".to_string() })?;
         
         let base_url = base_url.join(self.base_url())
-            .map_err(|_| VimeoError::FailedAssembleContent { reason: "cannot join base_url".to_string() })?;
+            .map_err(|_| VimeoError::CannotExtract { reason: "cannot join base_url".to_string() })?;
 
         // index_segment
         if let Some(index_segment) = self.index_segment() {
             let url = base_url.join(index_segment)
-                .map_err(|_| VimeoError::FailedAssembleContent { reason: "cannot join url (index_segment) - Audio".to_string() })?;
+                .map_err(|_| VimeoError::CannotExtract { reason: "cannot join url (index_segment) - Audio".to_string() })?;
             let request = client.get(url)
                 .build()
-                .map_err(|_| VimeoError::FailedAssembleContent { reason: "cannot construct request (index_segment) - Audio".to_string() })?;
+                .map_err(|_| VimeoError::CannotExtract { reason: "cannot construct request (index_segment) - Audio".to_string() })?;
             let content = client.execute(request)
                 .await
-                .map_err(|_| VimeoError::FailedAssembleContent { reason: "cannot get response (index_segment) - Audio".to_string() })?
+                .map_err(|_| VimeoError::CannotExtract { reason: "cannot get response (index_segment) - Audio".to_string() })?
                 .bytes()
                 .await
-                .map_err(|_| VimeoError::FailedAssembleContent { reason: "cannot construct byte response (index_segment) - Audio".to_string() })?;
+                .map_err(|_| VimeoError::CannotExtract { reason: "cannot construct byte response (index_segment) - Audio".to_string() })?;
             buf.write_all(&content)
                 .await
-                .map_err(|_| VimeoError::FailedAssembleContent { reason: "cannot write content to buf (index_segment) - Audio".to_string() })?;
+                .map_err(|_| VimeoError::CannotExtract { reason: "cannot write content to buf (index_segment) - Audio".to_string() })?;
 
         }
         
@@ -130,19 +130,19 @@ pub trait Extractable {
         let mut segments = futures::stream::iter(self.segments());
         while let Some(segment) = segments.next().await {
             let url = base_url.join(&segment.url)
-                .map_err(|_| VimeoError::FailedAssembleContent { reason: "cannot join url (segments)".to_string() })?;
+                .map_err(|_| VimeoError::CannotExtract { reason: "cannot join url (segments)".to_string() })?;
             let request = client.get(url)
                 .build()
-                .map_err(|_| VimeoError::FailedAssembleContent { reason: "cannot construct request (segments)".to_string() })?;
+                .map_err(|_| VimeoError::CannotExtract { reason: "cannot construct request (segments)".to_string() })?;
             let content = client.execute(request)
                 .await
-                .map_err(|_| VimeoError::FailedAssembleContent { reason: "cannot get response (segments)".to_string() })?
+                .map_err(|_| VimeoError::CannotExtract { reason: "cannot get response (segments)".to_string() })?
                 .bytes()
                 .await
-                .map_err(|_| VimeoError::FailedAssembleContent { reason: "cannot construct byte response (segments)".to_string() })?;
+                .map_err(|_| VimeoError::CannotExtract { reason: "cannot construct byte response (segments)".to_string() })?;
             buf.write_all(&content)
                 .await
-                .map_err(|_| VimeoError::FailedAssembleContent { reason: "cannot write content to buf (segments)".to_string() })?;
+                .map_err(|_| VimeoError::CannotExtract { reason: "cannot write content to buf (segments)".to_string() })?;
         }
 
         Ok(buf)
