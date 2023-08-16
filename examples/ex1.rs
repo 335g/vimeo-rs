@@ -51,29 +51,28 @@ async fn handle(args: Args) -> Result<(), Box<dyn std::error::Error>> {
     println!("channel: {}", summary.channel_layout);
     
     if let Some(extract_filepath) = args.extract_to {
-        if let Some(cdn) = config.dash_default_cdn() {
-            let request = client.get(cdn.url.clone())
-                .header("referer", referer)
-                .build()?;
-            let content = client.execute(request)
-                .await?
-                .json::<Content>()
-                // .json::<serde_json::Value>()
-                .await?;
+        let cdn = config.dash_default_cdn();
+        let request = client.get(cdn.url.clone())
+            .header("referer", referer)
+            .build()?;
+        let content = client.execute(request)
+            .await?
+            .json::<Content>()
+            // .json::<serde_json::Value>()
+            .await?;
 
-            if let Some(audio) = content.mp3_audios().first() {
-                println!("bitrate: {}", audio.bitrate);
-                println!("channels: {}", audio.channels);
-                println!("codecs: {}", audio.codecs);
-                println!("duration: {}", audio.duration);
-                println!("sample rate: {}", audio.sample_rate);
-                
-                let buf = content.extract_audio(audio, cdn.url.clone()).await?;
+        if let Some(audio) = content.mp3_audios().first() {
+            println!("bitrate: {}", audio.bitrate);
+            println!("channels: {}", audio.channels);
+            println!("codecs: {}", audio.codecs);
+            println!("duration: {}", audio.duration);
+            println!("sample rate: {}", audio.sample_rate);
+            
+            let buf = content.extract_audio(audio, cdn.url.clone()).await?;
 
-                let mut f = std::fs::File::create(extract_filepath)?;
-                f.write_all(&buf).expect("save success");
-                println!(" == FIN ==");
-            }
+            let mut f = std::fs::File::create(extract_filepath)?;
+            f.write_all(&buf).expect("save success");
+            println!(" == FIN ==");
         }
     }
 

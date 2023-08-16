@@ -117,20 +117,22 @@ pub struct Files {
     hls: Hls,
 }
 
+#[readonly::make]
 #[derive(Debug, Deserialize)]
 pub struct Dash {
     cdns: Cdns,
-    default_cdn: String,
-    separate_av: bool,
-    streams: Vec<Stream>,
-    streams_avc: Vec<Stream>,
+    pub default_cdn: String,
+    pub separate_av: bool,
+    pub streams: Vec<Stream>,
+    pub streams_avc: Vec<Stream>,
 }
 
+#[readonly::make]
 #[derive(Debug, Deserialize)]
 pub struct Hls {
     cdns: Cdns,
-    default_cdn: String,
-    separate_av: bool,
+    pub default_cdn: String,
+    pub separate_av: bool,
 }
 
 #[derive(Debug, Deserialize)]
@@ -152,12 +154,13 @@ pub struct Cdn {
     pub url: Url,
 }
 
+#[readonly::make]
 #[derive(Debug, Deserialize)]
 pub struct Stream { 
-    profile: String,
-    id: Uuid,
-    fps: f32,
-    quality: Quality,
+    pub profile: String,
+    pub id: Uuid,
+    pub fps: f32,
+    pub quality: Quality,
 }
 
 #[derive(Debug, Deserialize)]
@@ -189,8 +192,6 @@ pub struct Summary {
     pub width: usize,
     pub height: usize,
     pub duration: usize,
-    // pub url: Url,
-    // pub share_url: Url,
     pub hd: usize,
     pub allow_hd: usize,
     pub default_to_hd: usize,
