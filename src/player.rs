@@ -33,9 +33,14 @@ impl PlayerConfig {
     }
 
     pub fn dash_default_cdn(&self) -> Option<&Cdn> {
-        let default_cdn = &self.request.files.dash.default_cdn;
+        let default_cdn = self.dash_default_cdn_key();
 
         self.request.files.dash.cdns.0.get(default_cdn)
+    }
+
+    #[inline]
+    pub fn dash_default_cdn_key(&self) -> &str {
+        &self.request.files.dash.default_cdn
     }
 
     pub fn hls_cdns(&self) -> &HashMap<String, Cdn> {
@@ -43,9 +48,14 @@ impl PlayerConfig {
     }
 
     pub fn hls_default_cdn(&self) -> Option<&Cdn> {
-        let default_cdn = &self.request.files.hls.default_cdn;
+        let default_cdn = self.hls_default_cdn_key();
 
         self.request.files.hls.cdns.0.get(default_cdn)
+    }
+
+    #[inline]
+    pub fn hls_default_cdn_key(&self) -> &str {
+        &self.request.files.hls.default_cdn
     }
 }
 
