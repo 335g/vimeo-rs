@@ -1,6 +1,6 @@
 #![allow(dead_code)]
 
-use std::{collections::HashMap, sync::OnceLock};
+use std::{collections::HashMap, sync::OnceLock, ops::Deref};
 use regex::Regex;
 use scraper::{Html, Selector};
 use serde::{Deserialize, Deserializer};
@@ -28,14 +28,21 @@ pub struct PlayerConfig {
 }
 
 impl PlayerConfig {
+    #[inline]
+    pub fn dash(&self) -> &Dash {
+        &self.request.files.dash
+    }
+
+    #[inline]
     pub fn dash_cdns(&self) -> &HashMap<String, Cdn> {
         &self.request.files.dash.cdns.0
     }
 
-    pub fn dash_default_cdn(&self) -> Option<&Cdn> {
+    pub fn dash_default_cdn(&self) -> &Cdn {
         let default_cdn = self.dash_default_cdn_key();
+        let dash = self.dash();
 
-        self.request.files.dash.cdns.0.get(default_cdn)
+        dash.cdns.get(default_cdn).expect("is default cdn")
     }
 
     #[inline]
@@ -43,14 +50,21 @@ impl PlayerConfig {
         &self.request.files.dash.default_cdn
     }
 
+    #[inline]
+    pub fn hls(&self) -> &Hls {
+        &self.request.files.hls
+    }
+
+    #[inline]
     pub fn hls_cdns(&self) -> &HashMap<String, Cdn> {
         &self.request.files.hls.cdns.0
     }
 
-    pub fn hls_default_cdn(&self) -> Option<&Cdn> {
+    pub fn hls_default_cdn(&self) -> &Cdn {
         let default_cdn = self.hls_default_cdn_key();
+        let hls = self.hls();
 
-        self.request.files.hls.cdns.0.get(default_cdn)
+        hls.cdns.get(default_cdn).expect("is default cdn")
     }
 
     #[inline]
@@ -121,6 +135,14 @@ pub struct Hls {
 
 #[derive(Debug, Deserialize)]
 pub struct Cdns(HashMap<String, Cdn>);
+
+impl Deref for Cdns {
+    type Target = HashMap<String, Cdn>;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
 
 #[readonly::make]
 #[derive(Debug, Deserialize)]
