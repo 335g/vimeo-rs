@@ -240,12 +240,12 @@ pub enum ChannelLayout {
 #[readonly::make]
 #[derive(Debug, Deserialize)]
 pub struct Seo {
-    description: String,
+    pub description: String,
     #[serde(deserialize_with = "deserialize_upload_date")]
-    upload_date: PrimitiveDateTime,
-    embed_url: Url,
-    thumbnail: Url,
-    canonical_url: Url,
+    pub upload_date: PrimitiveDateTime,
+    pub embed_url: Url,
+    pub thumbnail: Url,
+    pub canonical_url: Url,
 }
 
 fn deserialize_upload_date<'de, D>(deserializer: D) -> Result<PrimitiveDateTime, D::Error>
