@@ -5,7 +5,7 @@ mod content;
 mod audio;
 mod video;
 
-pub use player::PlayerConfig;
+pub use player::{PlayerConfig, Summary, Seo};
 pub use content::Content;
 pub use error::VimeoError;
 pub use audio::{Audio, AudioExp};

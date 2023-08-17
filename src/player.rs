@@ -1,6 +1,6 @@
 #![allow(dead_code)]
 
-use std::{collections::HashMap, sync::OnceLock};
+use std::{collections::HashMap, sync::OnceLock, ops::Deref};
 use regex::Regex;
 use scraper::{Html, Selector};
 use serde::{Deserialize, Deserializer};
@@ -28,24 +28,48 @@ pub struct PlayerConfig {
 }
 
 impl PlayerConfig {
+    #[inline]
+    pub fn dash(&self) -> &Dash {
+        &self.request.files.dash
+    }
+
+    #[inline]
     pub fn dash_cdns(&self) -> &HashMap<String, Cdn> {
         &self.request.files.dash.cdns.0
     }
 
-    pub fn dash_default_cdn(&self) -> Option<&Cdn> {
-        let default_cdn = &self.request.files.dash.default_cdn;
+    pub fn dash_default_cdn(&self) -> &Cdn {
+        let default_cdn = self.dash_default_cdn_key();
+        let dash = self.dash();
 
-        self.request.files.dash.cdns.0.get(default_cdn)
+        dash.cdns.get(default_cdn).expect("is default cdn")
     }
 
+    #[inline]
+    pub fn dash_default_cdn_key(&self) -> &str {
+        &self.request.files.dash.default_cdn
+    }
+
+    #[inline]
+    pub fn hls(&self) -> &Hls {
+        &self.request.files.hls
+    }
+
+    #[inline]
     pub fn hls_cdns(&self) -> &HashMap<String, Cdn> {
         &self.request.files.hls.cdns.0
     }
 
-    pub fn hls_default_cdn(&self) -> Option<&Cdn> {
-        let default_cdn = &self.request.files.hls.default_cdn;
+    pub fn hls_default_cdn(&self) -> &Cdn {
+        let default_cdn = self.hls_default_cdn_key();
+        let hls = self.hls();
 
-        self.request.files.hls.cdns.0.get(default_cdn)
+        hls.cdns.get(default_cdn).expect("is default cdn")
+    }
+
+    #[inline]
+    pub fn hls_default_cdn_key(&self) -> &str {
+        &self.request.files.hls.default_cdn
     }
 }
 
@@ -93,24 +117,34 @@ pub struct Files {
     hls: Hls,
 }
 
+#[readonly::make]
 #[derive(Debug, Deserialize)]
 pub struct Dash {
     cdns: Cdns,
-    default_cdn: String,
-    separate_av: bool,
-    streams: Vec<Stream>,
-    streams_avc: Vec<Stream>,
+    pub default_cdn: String,
+    pub separate_av: bool,
+    pub streams: Vec<Stream>,
+    pub streams_avc: Vec<Stream>,
 }
 
+#[readonly::make]
 #[derive(Debug, Deserialize)]
 pub struct Hls {
     cdns: Cdns,
-    default_cdn: String,
-    separate_av: bool,
+    pub default_cdn: String,
+    pub separate_av: bool,
 }
 
 #[derive(Debug, Deserialize)]
 pub struct Cdns(HashMap<String, Cdn>);
+
+impl Deref for Cdns {
+    type Target = HashMap<String, Cdn>;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
 
 #[readonly::make]
 #[derive(Debug, Deserialize)]
@@ -120,12 +154,13 @@ pub struct Cdn {
     pub url: Url,
 }
 
+#[readonly::make]
 #[derive(Debug, Deserialize)]
 pub struct Stream { 
-    profile: String,
-    id: Uuid,
-    fps: f32,
-    quality: Quality,
+    pub profile: String,
+    pub id: Uuid,
+    pub fps: f32,
+    pub quality: Quality,
 }
 
 #[derive(Debug, Deserialize)]
@@ -157,8 +192,6 @@ pub struct Summary {
     pub width: usize,
     pub height: usize,
     pub duration: usize,
-    // pub url: Url,
-    // pub share_url: Url,
     pub hd: usize,
     pub allow_hd: usize,
     pub default_to_hd: usize,
@@ -207,12 +240,12 @@ pub enum ChannelLayout {
 #[readonly::make]
 #[derive(Debug, Deserialize)]
 pub struct Seo {
-    description: String,
+    pub description: String,
     #[serde(deserialize_with = "deserialize_upload_date")]
-    upload_date: PrimitiveDateTime,
-    embed_url: Url,
-    thumbnail: Url,
-    canonical_url: Url,
+    pub upload_date: PrimitiveDateTime,
+    pub embed_url: Url,
+    pub thumbnail: Url,
+    pub canonical_url: Url,
 }
 
 fn deserialize_upload_date<'de, D>(deserializer: D) -> Result<PrimitiveDateTime, D::Error>
