@@ -38,4 +38,7 @@ uuid = { version = "1.4.1", features = ["v4", "serde"] }
 
 [dev-dependencies]
 clap = { version = "4.3.21", features = ["derive"] }
+console = "0.15.7"
+dialoguer = { version = "0.10.4", features = ["fuzzy-select"] }
+indicatif = "0.17.6"
 tokio = { version = "1.28", features = ["rt-multi-thread"] }
